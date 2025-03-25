@@ -27,11 +27,11 @@ on:
         required: true
         description: Runs on...
         type: choice
-        default: ubuntu-22.04
+        default: ubuntu-latest
         options:
           - ubuntu-20.04
           - ubuntu-22.04
-
+          - ubuntu-latest
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
