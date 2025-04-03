@@ -191,7 +191,7 @@ fix_default_set() {
     fi
 }
 
-fix_miniupmpd() {
+fix_miniupnpd() {
     local miniupnpd_dir="$BUILD_DIR/feeds/packages/net/miniupnpd"
     local patch_file="999-chanage-default-leaseduration.patch"
 
@@ -284,11 +284,13 @@ update_affinity_script() {
 }
 
 fix_build_for_openssl() {
-    local makefile="$BUILD_DIR/package/libs/openssl/Makefile"
-
-    if [[ -f "$makefile" ]]; then
-        if ! grep -qP "^CONFIG_OPENSSL_SSL3" "$makefile"; then
-            sed -i '/^ifndef CONFIG_OPENSSL_SSL3/i CONFIG_OPENSSL_SSL3 := y' "$makefile"
+    local openssl_dir="$BUILD_DIR/package/libs/openssl"
+    local makefile="$openssl_dir/Makefile"
+    if [ -d "$(dirname "$makefile")" ] && [ -f "$makefile" ]; then
+        if grep -q "3.0.16" "$makefile"; then
+            # 替换本地openssl版本
+            rm -rf "$openssl_dir"
+            cp -rf "$BASE_PATH/patches/openssl" "$openssl_dir"
         fi
     fi
 }
@@ -406,11 +408,8 @@ update_pw() {
     # 删除 helper_smartdns_add.lua 文件中的特定行
     [ -f "$smartdns_lua_path" ] && sed -i '/force-qtype-SOA 65/d' "$smartdns_lua_path"
 
-    # 从 chnlist 文件中删除特定的域名
-    sed -i '/\.bing\./d' "$rules_dir/chnlist"
-    sed -i '/microsoft/d' "$rules_dir/chnlist"
-    sed -i '/msedge/d' "$rules_dir/chnlist"
-    sed -i '/github/d' "$rules_dir/chnlist"
+    # 清空chnlist
+    [ -f "$rules_dir/chnlist" ] && echo "" >"$rules_dir/chnlist"
 }
 
 install_opkg_distfeeds() {
@@ -725,7 +724,7 @@ main() {
     remove_unwanted_packages
     update_homeproxy
     fix_default_set
-    fix_miniupmpd
+    fix_miniupnpd
     update_golang
     change_dnsmasq2full
     fix_mk_def_depends
