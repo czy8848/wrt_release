@@ -22,22 +22,16 @@ on:
           - zn_m2_immwrt
           - zn_m2_libwrt
           - x64_immwrt
-      runs-on:
-        required: true
-        description: Runs on...
-        type: choice
-        default: ubuntu-24.04
-        options:
-          - ubuntu-20.04
-          - ubuntu-22.04
-          - ubuntu-24.04
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build:
-    runs-on: ${{ inputs.runs-on }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Free disk space
@@ -46,10 +40,32 @@ jobs:
       - name: Build System Setup
         uses: sbwml/actions@openwrt-build-setup
 
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Link Rust to system path
+        run: |
+          sudo mkdir -p /usr/local/bin
+          sudo ln -s "$HOME/.cargo/bin/cargo" /usr/local/bin/cargo
+          sudo ln -s "$HOME/.cargo/bin/rustup" /usr/local/bin/rustup
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install and Set Up Clang
+        run: |
+          sudo apt-get install -y libclang-dev
+          echo "LIBCLANG_PATH=$(find /usr/lib -name "libclang.so" | head -n 1 | xargs dirname)" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Initialization Values
+      - name: Set Build Date and Timezone
         run: |
           sudo -E timedatectl set-timezone "Asia/Shanghai"
           export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
@@ -64,9 +80,9 @@ jobs:
           path: |
             ./action_build/.ccache
             ./action_build/staging_dir
-          key: ${{ inputs.runs-on }}-${{ hashFiles('**/repo_flag') }}-${{ env.BUILD_DATE }}
+          key: ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-${{ env.BUILD_DATE }}
           restore-keys: |
-            ${{ inputs.runs-on }}-${{ hashFiles('**/repo_flag') }}-
+            ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-
 
       - name: Refresh the cache
         run: |
@@ -77,12 +93,14 @@ jobs:
           fi
 
       - name: Build Firmware
+        env:
+          LIBCLANG_PATH: ${{ env.LIBCLANG_PATH }}
         run: ./build.sh ${{ inputs.model }}
 
       - name: Delete Old Cache
         run: |
           # 获取缓存列表并删除
-          gh cache list --key ${{ inputs.runs-on }}-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
+          gh cache list --key ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
             gh cache delete "$key"
           done
           # 输出缓存状态
