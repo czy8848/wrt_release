@@ -8,10 +8,10 @@ update_feeds() {
     sed -i '/^#/d' "$FEEDS_PATH"
     sed -i '/packages_ext/d' "$FEEDS_PATH"
 
-    if ! grep -q "small-package" "$FEEDS_PATH"; then
-        [ -z "$(tail -c 1 "$FEEDS_PATH")" ] || echo "" >>"$FEEDS_PATH"
-        echo "src-git small8 https://github.com/kenzok8/jell" >>"$FEEDS_PATH"
-    fi
+    # if ! grep -q "small-package" "$FEEDS_PATH"; then
+    #     [ -z "$(tail -c 1 "$FEEDS_PATH")" ] || echo "" >>"$FEEDS_PATH"
+    #     echo "src-git small8 https://github.com/kenzok8/jell" >>"$FEEDS_PATH"
+    # fi
 
     if ! grep -q "openwrt-passwall" "$FEEDS_PATH"; then
         [ -z "$(tail -c 1 "$FEEDS_PATH")" ] || echo "" >>"$FEEDS_PATH"
@@ -44,10 +44,7 @@ install_feeds() {
     ./scripts/feeds update -i
     for dir in $BUILD_DIR/feeds/*; do
         if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [[ ! "$dir" == *.index ]] && [[ ! "$dir" == *.targetindex ]]; then
-            if [[ $(basename "$dir") == "small8" ]]; then
-                install_small8
-                install_fullconenat
-            elif [[ $(basename "$dir") == "passwall" ]]; then
+            if [[ $(basename "$dir") == "passwall" ]]; then
                 install_passwall
             elif [[ $(basename "$dir") == "nikki" ]]; then
                 install_nikki

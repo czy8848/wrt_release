@@ -70,7 +70,17 @@ update_golang() {
 }
 
 install_small8() {
-    ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
+    local repo_url="https://github.com/kenzok8/jell.git"
+    local feed_name="small8"
+
+    # 将稀疏克隆下来的包放到一个本地自定义 feed 目录中
+    local custom_feed_dir="$PWD/custom_feeds/$feed_name"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    # 1. 集中管理你要的包名
+    local packages=(
+        xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata geoview v2ray-plugin \
         tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
         v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go \
@@ -79,6 +89,60 @@ install_small8() {
         lucky luci-app-lucky luci-app-openclash luci-app-homeproxy luci-app-amlogic \
         oaf open-app-filter luci-app-oaf easytier luci-app-easytier \
         msd_lite luci-app-msd_lite cups luci-app-cupsd
+    )
+
+    # 2. 准备本地 feed 目录
+    if [ -d "$custom_feed_dir" ]; then
+        echo "清理旧的自定义 feed 目录..."
+        rm -rf "$custom_feed_dir"
+    fi
+    mkdir -p "$custom_feed_dir"
+
+    # 3. 稀疏克隆拉取骨架
+    echo "正在使用稀疏克隆(sparse-checkout)拉取 $feed_name 仓库骨架..."
+    rm -rf "$tmp_dir"
+    if ! git clone --depth 1 --filter=blob:none --sparse "$repo_url" "$tmp_dir"; then
+        echo "错误：从 $repo_url 拉取仓库骨架失败" >&2
+        return 1
+    fi
+
+    # 4. 告诉 Git 只拉取数组中的目录
+    echo "配置需要下载的包列表并拉取文件..."
+    git -C "$tmp_dir" sparse-checkout set "${packages[@]}"
+
+    # 5. 将拉取到的包移入我们的 custom_feeds 目录
+    for pkg in "${packages[@]}"; do
+        if [ -d "$tmp_dir/$pkg" ]; then
+            mv "$tmp_dir/$pkg" "$custom_feed_dir/"
+        else
+            echo "  [警告] 仓库中未找到包: $pkg"
+        fi
+    done
+
+    for only_update_pkg in fullconenat-nft fullconenat; do
+        if [ -d "$tmp_dir/$only_update_pkg" ]; then
+            mv "$tmp_dir/$only_update_pkg" "$custom_feed_dir/"
+        else
+            echo "  [警告] 仓库中未找到仅索引包: $only_update_pkg"
+        fi
+    done
+
+    # 6. 清理临时克隆目录
+    rm -rf "$tmp_dir"
+
+    # 7. 将本地目录作为 src-link 写入 feeds.conf.default
+    sed -i "/$feed_name/d" feeds.conf.default
+    echo "src-link $feed_name $custom_feed_dir" >> feeds.conf.default
+    echo "已将 $feed_name 作为本地源 (src-link) 添加到 feeds.conf.default"
+
+    # 8. 更新 feed 索引并安装数组中的包
+    echo "正在 update 和 install feeds..."
+    ./scripts/feeds update "$feed_name"
+
+    # 这里的 "${packages[@]}" 会自动展开成包名列表，等同于 install -p small8 pkg1 pkg2...
+    ./scripts/feeds install -p "$feed_name" "${packages[@]}"
+
+    echo "$feed_name 指定包处理完成并已成功加载到 feeds 体系中！"
 }
 
 install_passwall() {
