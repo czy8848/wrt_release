@@ -96,6 +96,7 @@ main() {
     update_geoip
     fix_openssl_ktls
     fix_opkg_check
+    fix_netfilter_kmod_clash
     fix_quectel_cm
     install_pbr_cmcc
     fix_pbr_ip_forward
