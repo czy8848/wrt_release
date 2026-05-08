@@ -73,6 +73,8 @@ install_small8() {
     local repo_url="https://github.com/kenzok8/jell.git"
     local feed_name="small8"
     local feeds_path
+    local fullconenat_nft_dir="$BUILD_DIR/package/network/utils/fullconenat-nft"
+    local fullconenat_dir="$BUILD_DIR/package/network/utils/fullconenat"
 
     # 将稀疏克隆下来的包放到一个本地自定义 feed 目录中
     local custom_feed_dir="$BUILD_DIR/custom_feeds/$feed_name"
@@ -89,8 +91,7 @@ install_small8() {
         luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest netdata luci-app-netdata \
         lucky luci-app-lucky luci-app-openclash luci-app-homeproxy luci-app-amlogic \
         oaf open-app-filter luci-app-oaf easytier luci-app-easytier \
-        msd_lite luci-app-msd_lite cups luci-app-cupsd \
-        fullconenat-nft fullconenat
+        msd_lite luci-app-msd_lite cups luci-app-cupsd
     )
     local required_feed_dirs=(
         cups tcping v2ray-geodata luci-lib-taskd luci-app-openclash
@@ -99,6 +100,13 @@ install_small8() {
     )
     local missing_packages=()
     local missing_feed_dirs=()
+
+    if [ ! -d "$fullconenat_nft_dir" ]; then
+        sparse_packages+=(fullconenat-nft)
+    fi
+    if [ ! -d "$fullconenat_dir" ]; then
+        sparse_packages+=(fullconenat)
+    fi
 
     feeds_path=$(get_feeds_path)
 
