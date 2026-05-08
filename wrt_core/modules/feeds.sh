@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
-update_feeds() {
-    local FEEDS_PATH="$BUILD_DIR/$FEEDS_CONF"
+get_feeds_path() {
+    local feeds_path="$BUILD_DIR/$FEEDS_CONF"
     if [[ -f "$BUILD_DIR/feeds.conf" ]]; then
-        FEEDS_PATH="$BUILD_DIR/feeds.conf"
+        feeds_path="$BUILD_DIR/feeds.conf"
     fi
+    printf '%s\n' "$feeds_path"
+}
+
+update_feeds() {
+    local FEEDS_PATH
+    FEEDS_PATH=$(get_feeds_path)
     sed -i '/^#/d' "$FEEDS_PATH"
     sed -i '/packages_ext/d' "$FEEDS_PATH"
 
@@ -44,12 +50,14 @@ install_feeds() {
     ./scripts/feeds update -i
     for dir in $BUILD_DIR/feeds/*; do
         if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [[ ! "$dir" == *.index ]] && [[ ! "$dir" == *.targetindex ]]; then
-            if [[ $(basename "$dir") == "passwall" ]]; then
+            local feed_name
+            feed_name=$(basename "$dir")
+            if [[ "$feed_name" == "passwall" ]]; then
                 install_passwall
-            elif [[ $(basename "$dir") == "nikki" ]]; then
+            elif [[ "$feed_name" == "nikki" ]]; then
                 install_nikki
             else
-                ./scripts/feeds install -f -ap $(basename "$dir")
+                ./scripts/feeds install -f -ap "$feed_name"
             fi
         fi
     done
